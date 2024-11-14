@@ -51,6 +51,7 @@ class Osoba(models.Model):
     nazwisko = models.CharField(max_length=100, blank=False, null=False)
     plec = models.CharField(max_length=1, choices=PLEC_CHOICES, blank=False, null=False)
     stanowisko = models.ForeignKey(Stanowisko, on_delete=models.CASCADE, blank=False, null=False)
+    data_dodania = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.imie} {self.nazwisko}"
