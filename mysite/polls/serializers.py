@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Team, Person, Stanowisko, Osoba
+from datetime import datetime
 
 
 class TeamSerializer(serializers.Serializer):
@@ -33,3 +34,15 @@ class OsobaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Osoba
         fields = ['id', 'imie', 'nazwisko', 'plec', 'stanowisko', 'data_dodania']
+
+    def validate_imie(self, value):
+        if not value.isalpha():
+            raise serializers.ValidationError("Osoba's name must consist only of letters!")
+
+        return value
+
+    def validate_data_dodania(self, value):
+        if value > datetime.now().date():
+            raise serializers.ValidationError("Osoba's creation date cannot be date from the future!")
+
+        return value
