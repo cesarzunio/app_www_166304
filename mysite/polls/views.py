@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Osoba, Stanowisko, Person, Team
@@ -39,10 +39,10 @@ def person_detail(request, pk):
         return Response(serializer.data)
 
 
-@api_view(['PUT', 'DELETE'])
+@api_view(['PUT'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
-def person_update_delete(request, pk):
+def person_update(request, pk):
 
     try:
         person = Person.objects.get(pk=pk)
@@ -50,20 +50,28 @@ def person_update_delete(request, pk):
     except Person.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
+    serializer = PersonSerializer(person, data=request.data)
 
-        serializer = PersonSerializer(person, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def person_delete(request, pk):
 
-        person.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    try:
+        person = Person.objects.get(pk=pk)
+
+    except Person.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    person.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET', 'POST'])
@@ -158,3 +166,22 @@ def stanowisko_detail(request, pk):
 
         stanowisko.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def stanowisko_members(request, id):
+
+    try:
+        stanowisko = Stanowisko.objects.get(pk=id)
+        osoby = Osoba.objects.filter(stanowisko=stanowisko)
+        serializer = OsobaSerializer(osoby, many=True)
+        return Response(serializer.data)
+
+    except Stanowisko.DoesNotExist:
+        return Response(
+            {
+                "error": "Stanowisko nie istnieje"
+            },
+            status=status.HTTP_404_NOT_FOUND)
