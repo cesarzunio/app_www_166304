@@ -1,7 +1,10 @@
 from django.shortcuts import render
+from django.db.models import Q
 from django.http import HttpResponse
+from django.core.exceptions import PermissionDenied
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from django.contrib.auth.decorators import permission_required
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -82,19 +85,22 @@ def osoba_list(request):
 
         nazwa = request.query_params.get('nazwa', None)
 
-        if nazwa:
-
-            osoby = Osoba.objects.filter(
-                nazwisko__icontains=nazwa,
-                wlasciciel=request.user)
+        if request.user.has_perm('yourapp.can_view_other_persons'):
+            queryset = Osoba.objects.all()
 
         else:
-            osoby = Osoba.objects.filter(wlasciciel=request.user)
+            queryset = Osoba.objects.filter(wlasciciel=request.user)
 
-        serializer = OsobaSerializer(osoby, many=True)
+        if nazwa:
+            queryset = queryset.filter(nazwisko__icontains=nazwa)
+
+        serializer = OsobaSerializer(queryset, many=True)
         return Response(serializer.data)
 
     elif request.method == 'POST':
+
+        if not request.user.has_perm('polls.add_osoba'):
+            raise PermissionDenied()
 
         serializer = OsobaSerializer(data=request.data)
 
